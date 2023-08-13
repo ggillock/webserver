@@ -1,0 +1,262 @@
+<script>
+
+var file1Dict = {}
+var file2Dict = {}
+var file1Name = ""
+var file2Name = ""
+
+const ParamMeta = {
+    config: ["Name","Icon","Color","Source"],
+    headamp: ["Gain","48v"],
+    preamp: ["P1","P2","P3","P4","LowCut"],
+    delay: ["On/Off","Time"],
+    gate: ["On/Off","Type","Threshold","Range","Attack","Hold","Release"],
+    gate_filter: ["On/Off","Type","Freq"],
+    dyn: ["On/Off","Type","Peak/RMS","Log/Lin","Threshold","Ratio","Knee","Gain","Attack","Hold","Release"],
+    dyn_filter: ["On/Off","Type","Freq"],
+    insert: ["On/Off","Pre/Post","FX"],
+    eq: ["On/Off"],
+    eq_n: ["Type","Freq","Gain","Q"],
+    mix: ["?","Fader","MainStereo","Pan","Mono"],
+    mix_n: ["On/Off","dB","Pan","Tap","LR/Pan"]
+}
+const ConsoleColor = {
+    WH: "color:white;background-color:black",
+    WHi: "background-color:white;color:black",
+    MG: "color:magenta;background-color:black",
+    MGi: "background-color:magenta;color:black",
+    YE: "color:yellow;background-color:black",
+    YEi: "background-color:yellow;color:black",
+    GN: "color:green;background-color:black",
+    GNi: "background-color:green;color:black",
+    CY: "color:cyan;background-color:black",
+    CYi: "background-color:cyan;color:black",
+    RD: "color:red;background-color:black",
+    RDi: "background-color:red;color:black",
+}
+var ChannelType = [ 'ch', 'bus', 'fxrtn', 'mtx','auxin' ]
+
+function TranslateNumberToName(BusNames, MtxNames, linetype, group) {
+    var name = group
+    if ((linetype == 'ch') || (linetype == 'auxin') || (linetype == 'fxrtn')) {
+        if (group.includes('mix/')) {
+            if (group.split('/')[1] in BusNames) {
+                name = "mix/"+BusNames[group.split('/')[1]]
+            }
+        }
+    }
+    if (linetype == 'bus') {
+        if (group.includes('mix/')) {
+            if (group.split('/')[1] in MtxNames) {
+                name = "mix/"+MtxNames[group.split('/')[1]]
+            }
+        }
+    }
+    return name
+}
+
+function loadFile1(contents) {
+    var file1Lines = contents.split('\n')
+    file1Dict = GetFullParamDict(file1Lines)
+    file1Name = file1Lines[0].split('\"')[1]
+    document.getElementById('file1button').setAttribute("width",file1Name.length*10)
+    document.getElementById('file1button').textContent=file1Name
+}
+
+function getParamTuples(sceneline) {
+    var tuples = []
+    var linetype = ""
+    var tracknum = ""
+    var paramgroup = ""
+    if (sceneline == null) return [linetype, tracknum, paramgroup, tuples]
+    var fields=sceneline.match(/(?:[^\s"']+|['"][^'"]*["'])+/g) // space delimited with quoted strings containing spaces
+    if (fields == null) return [linetype, tracknum, paramgroup, tuples]
+    var path=fields[0].split('/')
+
+    if (ChannelType.includes(path[1])) {
+        var params = ParamMeta[path[3]]
+        paramgroup = path[3]
+        if (path.length == 5) {
+            if (isNaN(path[4])) {
+                params = ParamMeta[path[3]+'_'+path[4]]
+            }
+            else {
+                params = ParamMeta[path[3]+'_n']
+            }
+            paramgroup = path[3]+'/'+path[4]
+        }
+
+        if (params) {
+            for (var p=0;p<fields.length-1;p++) {
+                tuples.push([params[p],fields[p+1].replace(/['"]+/g, '')])
+            }
+
+            linetype = path[1]
+            tracknum = path[2]
+        }
+    }
+    return [linetype, tracknum, paramgroup, tuples]
+}
+function GetFullParamDict(fileLines) {
+    var Headamp2 = {}
+    var fileDict = {}
+    for (var l=0;l<fileLines.length;l++) {
+        fields = fileLines[l].match(/(?:[^\s"']+|['"][^'"]*["'])+/g) // space delimited with quoted strings containing spaces
+        if ((fields != null) && (fields[0].split('/')[1] == 'headamp')) {
+            var key = fields[0].split('/')[2]
+            Headamp2[key] = {Gain: fields[1], Phantom: fields[2]}
+        }
+    }
+
+    // Save in dictionary keyed by first field
+    for (var l=0;l<fileLines.length;l++) {
+        var fields=fileLines[l].match(/(?:[^\s"']+|['"][^'"]*["'])+/g) // space delimited with quoted strings containing spaces        
+        if (fields != null) fileDict[fields[0]] = fileLines[l]
+        var [linetype2, tracknum2, paramgroup2, params2] = getParamTuples(fileLines[l])
+        if ((linetype2 == 'ch') && (paramgroup2 == 'config')) 
+        {
+            var key = '/ch/'+tracknum2+'/headamp'
+            fileDict[key] = key + ' ' + Headamp2[params2[3][1].padStart(3,'0')].Gain + ' ' + Headamp2[params2[3][1].padStart(3,'0')].Phantom
+        }
+    }
+    return fileDict
+}
+function loadFile2(contents) {
+    var file2Lines = contents.split('\n')
+    file2Dict = GetFullParamDict(file2Lines)
+    file2Name = file2Lines[0].split('\"')[1]
+    showDiff()
+}
+function showDiff()
+{
+    document.getElementById('file2button').setAttribute("width",file2Name.length*10)
+    document.getElementById('file2button').textContent=file2Name
+
+    
+
+    var htmlout = ""
+    htmlout="Before N Lines = "+String(Object.keys(file1Dict).length)+", After N Lines = "+String(Object.keys(file2Dict).length)+'\n' 
+
+    var OutTable = []
+    var channelName = "No Channel Name"
+    var channelColor = ""
+    
+    var ChannelNames = {}
+    var BusNames = {}
+    var AuxNames = {}
+    var FxRtnNames = {}
+    var MtxNames = {}
+
+    // Fill dictionaries
+    for (const key in file2Dict) {
+        var [linetype2, tracknum2, paramgroup2, params2] = getParamTuples(file2Dict[key])
+        if (paramgroup2 == "config") {
+            if (linetype2 == 'ch') ChannelNames[tracknum2] = params2[0][1]
+            if (linetype2 == 'bus') BusNames[tracknum2] = params2[0][1]
+            if (linetype2 == 'auxin') AuxNames[tracknum2] = params2[0][1]
+            if (linetype2 == 'fxrtn') FxRtnNames[tracknum2] = params2[0][1]
+            if (linetype2 == 'mtx') MtxNames[tracknum2] = params2[0][1]
+        }
+    }
+
+    var ShowType = []
+    if (document.getElementById('channels').checked) ShowType.push('ch')
+    if (document.getElementById('busses').checked) ShowType.push('bus')
+    if (document.getElementById('auxins').checked) ShowType.push('auxin')
+    if (document.getElementById('fxrtns').checked) ShowType.push('fxrtn')
+    if (document.getElementById('mtxs').checked) ShowType.push('mtx')
+
+    for (const key in file2Dict) {
+        var [linetype1, tracknum1, paramgroup1, params1] = getParamTuples(file1Dict[key])
+        var [linetype2, tracknum2, paramgroup2, params2] = getParamTuples(file2Dict[key])
+        if (params1.length != params2.length) continue
+        if (!ShowType.includes(linetype1)) continue
+        if (params1.length > 0){
+            if (paramgroup1 == "config") {
+                channelName = params2[0][1]
+                channelColor = ConsoleColor[params2[2][1]]
+            }
+            for (var p=0;p<params1.length;p++) {
+                if ((params1[p][0] != '?') && (params1[p][1] != params2[p][1])) 
+                {
+                    var row = {
+                        Type: linetype1, 
+                        Color: channelColor, 
+                        Name: channelName, 
+                        Group: TranslateNumberToName(BusNames,MtxNames,linetype1,paramgroup1), 
+                        Param: params1[p][0],
+                        Before: params1[p][1],
+                        After: params2[p][1]
+                    }
+                    OutTable.push(row)
+                }
+            }
+        }     
+    }
+
+    htmlout+="<table><tr><th>Type</th><th>Name</th><th>Group</th><th>Param</th><th>Before</th><th>After</th></tr>"
+    for (var r=0;r<OutTable.length;r++) {
+        htmlout+='<tr style=\"'+OutTable[r].Color+'\">'+
+                        '<td>'+OutTable[r].Type+'</td>'+
+                        '<td>'+OutTable[r].Name+'</td>'+
+                        '<td>'+OutTable[r].Group+'</td>'+
+                        '<td>'+OutTable[r].Param+'</td>'+
+                        '<td>'+OutTable[r].Before+'</td>'+
+                        '<td>'+OutTable[r].After+'</td></tr>\n'
+    }
+    htmlout+="</table>"
+    document.getElementById('contents').innerHTML = htmlout;
+}
+function clickElem(elem) {
+        // Thx user1601638 on Stack Overflow (6/6/2018 - https://stackoverflow.com/questions/13405129/javascript-create-and-save-file )
+        var eventMouse = document.createEvent("MouseEvents")
+        eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+        elem.dispatchEvent(eventMouse)
+}
+
+function openFile(func) {
+        readFile = function(e) {
+            var file = e.target.files[0];
+            if (!file) {
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var contents = e.target.result;
+                fileInput.func(contents)
+                document.body.removeChild(fileInput)
+            }
+            reader.readAsText(file)
+        }
+        fileInput = document.createElement("input")
+        fileInput.type='file'
+        fileInput.style.display='none'
+        fileInput.onchange=readFile
+        fileInput.func=func
+        document.body.appendChild(fileInput)
+        clickElem(fileInput)
+}
+</script>
+<head>
+    <style>
+    table, th, td {
+        border: 1px solid rgb(56, 56, 56);
+        border-collapse: collapse;
+    }
+    </style>
+</head>
+<body style="background-color:black; color:white">
+<button id="file1button" onclick="openFile(loadFile1)">Select Before File</button>
+<button id="file2button" onclick="openFile(loadFile2)">Select After File</button>
+<input type="checkbox" id="channels" name="channels" value="Channels" checked onclick="showDiff()" >
+<label for="channels"> Channels</label>
+<input type="checkbox" id="busses" name="busses" value="Busses" checked onclick="showDiff()" >
+<label for="busses"> Busses</label>
+<input type="checkbox" id="auxins" name="auxins" value="AuxIns" checked onclick="showDiff()" >
+<label for="auxins"> AuxIns</label>
+<input type="checkbox" id="fxrtns" name="fxrtns" value="FxRtns" checked onclick="showDiff()" >
+<label for="fxrtns"> FxReturns</label>
+<input type="checkbox" id="mtxs" name="mtxs" value="Matrixes" checked onclick="showDiff()" >
+<label for="mtxs"> Matrixes</label>
+<pre id="contents"></pre>
+</body>

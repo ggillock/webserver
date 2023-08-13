@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html style="background-color: aquamarine;">
+<body>
+<style>
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        
+    }
+</style>
+<h1>Identification</h1>
+<h4>Please be accurate!</h4>
+<h4 style="color:red">Note: "reset" does not overrite previously "printed" input values, only values in the fields below.</h4>
+
+    <script>
+        const people = [] 
+
+        
+        class person {
+            constructor(personName, personEye, personAge, personWeight) {
+                this.personName = personName;
+                this.personEye = personEye;
+                this.personAge = personAge;
+                this.personWeight = personWeight
+            }
+            printPPL() {
+            
+                return "<tr><td>" + this.personName + "</td>" + "<td>" + this.personEye + "</td>" + "<td>" + this.personAge + "</td>" + "<td>" + this.personWeight + "</td></tr>";
+            }
+        
+        }
+        
+
+        let person_name, person_eye, person_age, person_weight;
+        function printP(destId, sourceId) {
+            document.getElementById(destId).innerHTML= 
+            document.getElementById(sourceId).value;
+        }  
+        function printAll() { 
+            let person_name = document.getElementById("person_name").value
+            let person_eye = document.getElementById("person_eye").value
+            let person_age = document.getElementById("person_age").value
+            let person_weight = document.getElementById("person_weight").value
+
+            let newPerson = new person(person_name, person_eye, person_age, person_weight);
+            people.push(newPerson);
+            let plen = people.length;
+            let text = "<tr> <th>Name</th><th>Eye Color</th><th>Age</th><th>Weight</th></tr>";
+            for (let i = 0; i < plen; i++) {
+            text += people[i].printPPL();
+            }
+            document.getElementById("table").innerHTML = text;
+            
+        }
+    </script>
+
+    <form name="myForm">
+    <label for="person_name"><b>Name</b></label><br>
+    <input type="text" id="person_name"><br>
+    <label for="person_eye"><b>Eye Color</b></label><br>
+    <input type="text" id="person_eye"><br>
+    <label for="person_age"><b>Age</b></label><br>
+    <input type="text" id="person_age"><br>
+    <label for="person_weight"><b>Weight</b>...yes, your<i> real </i>weight</label><br>
+    <input type="text" id="person_weight"><br>
+    <input type="reset">
+    </form>
+
+    <button onclick="printAll()"><b>Print Info</b></button><br>
+
+    <br>
+    <table id="table" style="background-color: aliceblue;">
+    </table>
+</body>
+</html>
+
