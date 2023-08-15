@@ -11,11 +11,16 @@
 <h1>Identification</h1>
 <h4>Please be accurate!</h4>
 <h4 style="color:red">Note: "reset" does not overrite previously "printed" input values, only values in the fields below.</h4>
-
+<div id="result"></div>
     <script>
-        const people = [] 
-
-        
+        let people = [] 
+        if (typeof(Storage) !== "undefined") {
+            people = JSON.parse(window.localStorage.getItem("people"));
+            document.getElementById("result").innerHTML= localStorage.getItem("people");
+        } else {
+            window.localStorage.setItem("testkey","No save data")
+            document.getElementById("result").innerHTML = window.localStorage.getItem("testkey");
+        }
         class person {
             constructor(personName, personEye, personAge, personWeight) {
                 this.personName = personName;
@@ -23,13 +28,14 @@
                 this.personAge = personAge;
                 this.personWeight = personWeight
             }
-            printPPL() {
             
-                return "<tr><td>" + this.personName + "</td>" + "<td>" + this.personEye + "</td>" + "<td>" + this.personAge + "</td>" + "<td>" + this.personWeight + "</td></tr>";
-            }
+            
         
         }
-        
+        function printPPL(person) {
+            
+            return "<tr><td>" + person.personName + "</td>" + "<td>" + person.personEye + "</td>" + "<td>" + person.personAge + "</td>" + "<td>" + person.personWeight + "</td></tr>";
+        }
 
         let person_name, person_eye, person_age, person_weight;
         function printP(destId, sourceId) {
@@ -47,15 +53,18 @@
             let plen = people.length;
             let text = "<tr> <th>Name</th><th>Eye Color</th><th>Age</th><th>Weight</th></tr>";
             for (let i = 0; i < plen; i++) {
-            text += people[i].printPPL();
+            text += printPPL(people[i]);
             }
             document.getElementById("table").innerHTML = text;
-            
+            const save = JSON.stringify(people);
+            window.localStorage.setItem("people", save);
+            document.getElementById("result").innerHTML= localStorage.getItem("people");
+
         }
     </script>
 
     <form name="myForm">
-    <label for="person_name"><i>Name</i></label><br>
+    <label for="person_name"><b>Name</b></label><br>
     <input type="text" id="person_name"><br>
     <label for="person_eye"><b>Eye Color</b></label><br>
     <input type="text" id="person_eye"><br>
