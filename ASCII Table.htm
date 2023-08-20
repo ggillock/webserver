@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html style="background-color: aquamarine;">
+<body>
+<style>
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        
+    }
+</style>
+<h1>ASCII Table</h1>
+
+<script>
+    function printR(i) {
+            
+            return "<tr><td>" + i.toString(2) + "</td>" + "<td>" + i.toString(10) + "</td>" + "<td>" + i.toString(16) + "</td>" + "<td>" + String.fromCharCode(i)+ "</td></tr>";
+        }
+    function printTBL() {
+        let text = "<th>Decimal</th><th>Binary</th><th>Hexadecimal</th><th>ASCII</th>"
+        for (let i = 0; i <= 128; i++) {
+        text += printR(i);
+    }
+    document.getElementById("table").innerHTML = text;
+    }
+</script>
+<table id = "table">
+    
+</table>
+<button onclick="printTBL()">Print</button>
+
+</body>
